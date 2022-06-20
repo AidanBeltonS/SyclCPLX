@@ -798,8 +798,10 @@ private:
   _Tp _Data[_N];
 
 public:
-  vec() {};
+  vec(){};
   vec(_Tp val) {
+
+#pragma unroll
     for (int i = 0; i < _N; ++i)
       _Data[i] = val;
   }
@@ -810,6 +812,8 @@ public:
 
   friend vec operator+(const vec &lhs, const vec &rhs) {
     vec<_Tp, _N> out;
+
+#pragma unroll
     for (int i = 0; i < _N; ++i)
       out[i] = lhs[i] + rhs[i];
 
@@ -818,6 +822,8 @@ public:
 
   friend vec operator-(const vec &lhs, const vec &rhs) {
     vec<_Tp, _N> out;
+
+#pragma unroll
     for (int i = 0; i < _N; ++i)
       out[i] = lhs[i] - rhs[i];
 
@@ -826,6 +832,8 @@ public:
 
   friend vec operator*(const vec &lhs, const vec &rhs) {
     vec<_Tp, _N> out;
+
+#pragma unroll
     for (int i = 0; i < _N; ++i)
       out[i] = lhs[i] * rhs[i];
 
@@ -834,6 +842,8 @@ public:
 
   friend vec operator/(const vec &lhs, const vec &rhs) {
     vec<_Tp, _N> out;
+
+#pragma unroll
     for (int i = 0; i < _N; ++i)
       out[i] = lhs[i] / rhs[i];
 
@@ -849,10 +859,12 @@ abs(const complex<_Tp> &__c) {
   return sycl::hypot(__c.real(), __c.imag());
 }
 
-template <typename _Tp, typename _cTp, int _N> 
+template <typename _Tp, typename _cTp, int _N>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY sycl::vec<_cTp, _N>
 abs(const vec<_Tp, _N> &__c) {
   sycl::vec<_cTp, _N> out;
+
+#pragma unroll
   for (int i = 0; i < _N; ++i)
     out[i] = abs(__c[i]);
 
@@ -867,10 +879,12 @@ arg(const complex<_Tp> &__c) {
   return sycl::atan2(__c.imag(), __c.real());
 }
 
-template <typename _Tp, typename _cTp, int _N> 
+template <typename _Tp, typename _cTp, int _N>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY sycl::vec<_cTp, _N>
 arg(const vec<_Tp, _N> &__c) {
   sycl::vec<_cTp, _N> out;
+
+#pragma unroll
   for (int i = 0; i < _N; ++i)
     out[i] = arg(__c[i]);
 
@@ -885,10 +899,12 @@ log(const complex<_Tp> &__x) {
   return complex<_Tp>(sycl::log(abs(__x)), arg(__x));
 }
 
-template <typename _Tp, int _N> 
+template <typename _Tp, int _N>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY vec<_Tp, _N>
 log(const vec<_Tp, _N> &__c) {
   vec<_Tp, _N> out;
+
+#pragma unroll
   for (int i = 0; i < _N; ++i)
     out[i] = log(__c[i]);
 
@@ -918,10 +934,12 @@ SYCL_EXTERNAL complex<_Tp> exp(const complex<_Tp> &__x) {
   return complex<_Tp>(__e * sycl::cos(__i), __e * sycl::sin(__i));
 }
 
-template <typename _Tp, int _N> 
+template <typename _Tp, int _N>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY vec<_Tp, _N>
 exp(const vec<_Tp, _N> &__c) {
   vec<_Tp, _N> out;
+
+#pragma unroll
   for (int i = 0; i < _N; ++i)
     out[i] = exp(__c[i]);
 
@@ -936,10 +954,12 @@ pow(const complex<_Tp> &__x, const complex<_Tp> &__y) {
   return exp(__y * log(__x));
 }
 
-template <typename _Tp, int _N> 
+template <typename _Tp, int _N>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY vec<_Tp, _N>
 pow(const vec<_Tp, _N> &__x, const vec<_Tp, _N> &__y) {
   vec<_Tp, _N> out;
+
+#pragma unroll
   for (int i = 0; i < _N; ++i)
     out[i] = pow(__x[i], __y[i]);
 
