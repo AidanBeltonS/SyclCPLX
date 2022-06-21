@@ -3,7 +3,6 @@
 #include <sycl/sycl.hpp>
 #include <sys/time.h>
 
-#define VECTORIZE
 #include "sycl_ext_complex.hpp"
 
 using namespace sycl::ext;
@@ -31,16 +30,18 @@ static uint64_t usec(void) {
                                                                                \
   template <typename T, int N>                                                 \
   inline void host_do_work_##op_name(                                          \
-      sycl::queue &Q, cplx::vec<cplx::complex<T>, N> &A,                       \
-      cplx::vec<cplx::complex<T>, N> &B, cplx::vec<cplx::complex<T>, N> &C) {  \
+      sycl::queue &Q, cplx::complex<sycl::vec<T, N>, T, N> &A,                 \
+      cplx::complex<sycl::vec<T, N>, T, N> &B,                                 \
+      cplx::complex<sycl::vec<T, N>, T, N> &C) {                               \
     C = A op B;                                                                \
   }                                                                            \
                                                                                \
   template <typename T, int N>                                                 \
   inline void device_do_work_##op_name(                                        \
-      sycl::queue &Q, sycl::buffer<cplx::vec<cplx::complex<T>, N>, 1> &A_buf,  \
-      sycl::buffer<cplx::vec<cplx::complex<T>, N>, 1> &B_buf,                  \
-      sycl::buffer<cplx::vec<cplx::complex<T>, N>, 1> &C_buf) {                \
+      sycl::queue &Q,                                                          \
+      sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>, 1> &A_buf,            \
+      sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>, 1> &B_buf,            \
+      sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>, 1> &C_buf) {          \
     Q.submit([&](sycl::handler &cgh) {                                         \
       auto A_acc = A_buf.template get_access<sycl::access::mode::read>(cgh);   \
       auto B_acc = B_buf.template get_access<sycl::access::mode::read>(cgh);   \
@@ -56,9 +57,9 @@ static uint64_t usec(void) {
                                         const unsigned int warmup_run_size,    \
                                         const unsigned int test_run_size) {    \
                                                                                \
-    cplx::vec<cplx::complex<T>, N> A(cplx::complex<T>(2, 2));                  \
-    cplx::vec<cplx::complex<T>, N> B(cplx::complex<T>(3, 3));                  \
-    cplx::vec<cplx::complex<T>, N> C;                                          \
+    cplx::complex<sycl::vec<T, N>, T, N> A(std::complex<T>(2, 2));             \
+    cplx::complex<sycl::vec<T, N>, T, N> B(std::complex<T>(3, 3));             \
+    cplx::complex<sycl::vec<T, N>, T, N> C;                                    \
                                                                                \
     for (uint64_t i = 0; i < warmup_run_size; ++i)                             \
       host_do_work_##op_name(Q, A, B, C);                                      \
@@ -79,17 +80,17 @@ static uint64_t usec(void) {
                                           const unsigned int warmup_run_size,  \
                                           const unsigned int test_run_size) {  \
                                                                                \
-    cplx::vec<cplx::complex<T>, N> A[n_simd_elements] = {                      \
-        cplx::complex<T>(2, 2)};                                               \
-    cplx::vec<cplx::complex<T>, N> B[n_simd_elements] = {                      \
-        cplx::complex<T>(3, 3)};                                               \
-    cplx::vec<cplx::complex<T>, N> C[n_simd_elements];                         \
+    cplx::complex<sycl::vec<T, N>, T, N> A[n_simd_elements] = {                \
+        std::complex<T>(2, 2)};                                                \
+    cplx::complex<sycl::vec<T, N>, T, N> B[n_simd_elements] = {                \
+        std::complex<T>(3, 3)};                                                \
+    cplx::complex<sycl::vec<T, N>, T, N> C[n_simd_elements];                   \
                                                                                \
-    sycl::buffer<cplx::vec<cplx::complex<T>, N>> A_buf(                        \
+    sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>> A_buf(                  \
         A, sycl::range<1>(n_simd_elements));                                   \
-    sycl::buffer<cplx::vec<cplx::complex<T>, N>> B_buf(                        \
+    sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>> B_buf(                  \
         B, sycl::range<1>(n_simd_elements));                                   \
-    sycl::buffer<cplx::vec<cplx::complex<T>, N>> C_buf(                        \
+    sycl::buffer<cplx::complex<sycl::vec<T, N>, T, N>> C_buf(                  \
         C, sycl::range<1>(n_simd_elements));                                   \
                                                                                \
     for (uint64_t i = 0; i < warmup_run_size; ++i)                             \
