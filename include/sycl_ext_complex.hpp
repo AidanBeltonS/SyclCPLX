@@ -22,7 +22,7 @@
 
 _SYCL_EXT_CPLX_BEGIN_NAMESPACE_STD
 
-#ifdef VECTORIZE
+#ifdef AOS
 
 using std::enable_if;
 using std::integral_constant;
@@ -981,7 +981,7 @@ basic_ostream<_CharT, _Traits> &operator<<(basic_ostream<_CharT, _Traits> &__os,
   return __os << __s.str();
 }
 
-#else // VECTORIZE
+#else // AOS
 
 template <class _v, class _Tp, int _N>
 class complex {
@@ -1214,7 +1214,7 @@ pow(const complex<_v, _Tp, _N> &__x, const complex<_v, _Tp, _N> &__y) {
   return exp(__y * log(__x));
 }
 
-#endif // VECTORIZE
+#endif // AOS
 
 _SYCL_EXT_CPLX_END_NAMESPACE_STD
 

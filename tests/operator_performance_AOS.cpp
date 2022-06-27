@@ -3,14 +3,12 @@
 #include <sycl/sycl.hpp>
 #include <sys/time.h>
 
-#define VECTORIZE
+#define AOS
 #include "sycl_ext_complex.hpp"
 
 using namespace sycl::ext;
 
-#define N_RUNS 1e4
-
-constexpr size_t n_simd_elements = 100;
+constexpr size_t n_simd_elements = N_SIMD_ELE;
 
 /*
  * Wallclock time in microseconds
@@ -69,7 +67,7 @@ static uint64_t usec(void) {
       host_do_work_##op_name(Q, A, B, C);                                      \
                                                                                \
     float avg_time = float(usec() - t0) / test_run_size;                       \
-    std::cout << "Host avg operator time:" << avg_time << std::endl;           \
+    std::cout << "Host avg operator " << #op_name << " time:" << avg_time << std::endl;           \
                                                                                \
     return avg_time;                                                           \
   }                                                                            \
@@ -101,7 +99,7 @@ static uint64_t usec(void) {
       device_do_work_##op_name(Q, A_buf, B_buf, C_buf);                        \
                                                                                \
     float avg_time = float(usec() - t0) / (test_run_size * n_simd_elements);   \
-    std::cout << "Device avg operator time:" << avg_time << std::endl;         \
+    std::cout << "Device avg operator " << #op_name << " time:" << avg_time << std::endl;         \
                                                                                \
     return avg_time;                                                           \
   }
@@ -131,7 +129,56 @@ template <typename T, int N> void test_operator(sycl::queue &Q) {
 int main() {
   sycl::queue Q;
 
+  std::cout << "AOS N_RUNS:" << N_RUNS << std::endl;
+
+  std::cout << "HALF\n";
+  std::cout << "v1\n";
+  test_operator<sycl::half, 1>(Q);
+  std::cout << "v2\n";
+  test_operator<sycl::half, 2>(Q);
+  std::cout << "v3\n";
+  test_operator<sycl::half, 3>(Q);
+  std::cout << "v4\n";
+  test_operator<sycl::half, 4>(Q);
+  std::cout << "v8\n";
+  test_operator<sycl::half, 8>(Q);
+  std::cout << "v16\n";
+  test_operator<sycl::half, 16>(Q);
+  std::cout << std::endl;
+
+  std::cout << "FLOAT\n";
+  std::cout << "v1\n";
+  test_operator<float, 1>(Q);
+  std::cout << "v2\n";
+  test_operator<float, 2>(Q);
+  std::cout << "v3\n";
+  test_operator<float, 3>(Q);
+  std::cout << "v4\n";
+  test_operator<float, 4>(Q);
+  std::cout << "v8\n";
+  test_operator<float, 8>(Q);
+  std::cout << "v16\n";
   test_operator<float, 16>(Q);
+  std::cout << std::endl;
+
+  std::cout << "DOUBLE\n";
+  std::cout << "v1\n";
+  test_operator<double, 1>(Q);
+  std::cout << "v2\n";
+  test_operator<double, 2>(Q);
+  std::cout << "v3\n";
+  test_operator<double, 3>(Q);
+  std::cout << "v4\n";
+  test_operator<double, 4>(Q);
+  std::cout << "v8\n";
+  test_operator<double, 8>(Q);
+  std::cout << "v16\n";
+  test_operator<double, 16>(Q);
+  std::cout << std::endl;
+
+
+
+
 
   return 0;
 }

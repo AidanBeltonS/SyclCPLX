@@ -2,11 +2,12 @@
 #include <iomanip>
 #include <sycl/sycl.hpp>
 
+#define AOS
 #include "sycl_ext_complex.hpp"
 
 int main() {
-    sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> A(sycl::ext::cplx::complex<float>(2, 2));
-    sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> B(sycl::ext::cplx::complex<float>(3, 3));
+    sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> A(sycl::ext::cplx::complex<float>(3, 4));
+    sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> B(sycl::ext::cplx::complex<float>(3, 4));
     sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> C;
     sycl::vec<float, 4> D;
 
