@@ -1,16 +1,18 @@
 #include <cmath>
-#include <iomanip>
 #include <complex>
+#include <iomanip>
 
 #include <sycl/sycl.hpp>
 
-#include "sycl_ext_complex.hpp"
-
+#ifdef VECTORIZE
+#include "sycl_ext_complex_SOA.hpp"
+#else
+#include "sycl_ext_complex_SOA_no_vec.hpp"
+#endif
 
 int main() {
   sycl::vec<float, 4> re(3);
   sycl::vec<float, 4> im(4);
-
 
   sycl::ext::cplx::complex<sycl::vec<float, 4>, float, 4> A(re, im);
   sycl::ext::cplx::complex<sycl::vec<float, 4>, float, 4> B(re, im);

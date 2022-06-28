@@ -2,8 +2,7 @@
 #include <iomanip>
 #include <sycl/sycl.hpp>
 
-#define AOS
-#include "sycl_ext_complex.hpp"
+#include "sycl_ext_complex_AOS.hpp"
 
 int main() {
     sycl::ext::cplx::vec<sycl::ext::cplx::complex<float>, 4> A(sycl::ext::cplx::complex<float>(3, 4));

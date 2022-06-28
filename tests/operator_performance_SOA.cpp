@@ -3,7 +3,11 @@
 #include <sycl/sycl.hpp>
 #include <sys/time.h>
 
-#include "sycl_ext_complex.hpp"
+#ifdef VECTORIZE
+#include "sycl_ext_complex_SOA.hpp"
+#else
+#include "sycl_ext_complex_SOA_no_vec.hpp"
+#endif
 
 using namespace sycl::ext;
 
@@ -68,7 +72,8 @@ static uint64_t usec(void) {
       host_do_work_##op_name(Q, A, B, C);                                      \
                                                                                \
     float avg_time = float(usec() - t0) / test_run_size;                       \
-    std::cout << "Host avg operator " << #op_name << " time:" << avg_time << std::endl;           \
+    std::cout << "Host avg operator " << #op_name << " time:" << avg_time      \
+              << std::endl;                                                    \
                                                                                \
     return avg_time;                                                           \
   }                                                                            \
@@ -100,7 +105,8 @@ static uint64_t usec(void) {
       device_do_work_##op_name(Q, A_buf, B_buf, C_buf);                        \
                                                                                \
     float avg_time = float(usec() - t0) / (test_run_size * n_simd_elements);   \
-    std::cout << "Device avg operator " << #op_name << " time:" << avg_time << std::endl;         \
+    std::cout << "Device avg operator " << #op_name << " time:" << avg_time    \
+              << std::endl;                                                    \
                                                                                \
     return avg_time;                                                           \
   }
