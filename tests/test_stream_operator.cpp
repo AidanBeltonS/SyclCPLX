@@ -1,8 +1,7 @@
 #include "test_helper.hpp"
 
-template <typename T>
-struct test_stream_operator {
-  bool operator() (sycl::queue &Q, T init_re, T init_im) {
+template <typename T> struct test_stream_operator {
+  bool operator()(sycl::queue &Q, T init_re, T init_im) {
     auto *cplx_out = sycl::malloc_shared<sycl::ext::cplx::complex<T>>(1, Q);
     cplx_out[0] = sycl::ext::cplx::complex<T>(init_re, init_im);
 
