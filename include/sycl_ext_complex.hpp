@@ -1632,16 +1632,27 @@ public:
 
 #undef OP
 
+  // OP is: %
+  friend marray operator%(const marray &lhs, const marray &rhs) = delete;
+  friend marray operator%(const marray &lhs, const DataT &rhs) = delete;
+  friend marray operator%(const DataT &lhs, const marray &rhs) = delete;
+
   // OP is: +=, -=, *=, /=
 #define OP(op)                                                                 \
-  friend marray &operator op(const marray &lhs, const marray &rhs) {           \
+  friend marray &operator op(marray &lhs, const marray &rhs) {                 \
     for (std::size_t i = 0; i < NumElements; ++i)                              \
       lhs[i] op rhs[i];                                                        \
                                                                                \
     return lhs;                                                                \
   }                                                                            \
                                                                                \
-  friend marray &operator op(const marray &lhs, const DataT &rhs) {            \
+  friend marray &operator op(marray &lhs, const DataT &rhs) {                  \
+    for (std::size_t i = 0; i < NumElements; ++i)                              \
+      lhs[i] op rhs;                                                           \
+                                                                               \
+    return lhs;                                                                \
+  }                                                                            \
+  friend marray &operator op(DataT &lhs, const marray &rhs) {                  \
     for (std::size_t i = 0; i < NumElements; ++i)                              \
       lhs[i] op rhs;                                                           \
                                                                                \
@@ -1655,56 +1666,82 @@ public:
 
 #undef OP
 
-  // // OP is prefix ++, --
-  // friend marray &operatorOP(marray &rhs) { /* ... */
-  // }
+  // OP is: %=
+  friend marray &operator%=(marray &lhs, const marray &rhs) = delete;
+  friend marray &operator%=(marray &lhs, const DataT &rhs) = delete;
+  friend marray &operator%=(DataT &lhs, const marray &rhs) = delete;
 
-  // // OP is postfix ++, --
-  // friend marray operatorOP(marray &lhs, int) { /* ... */
-  // }
+// OP is: ++, --
+#define OP(op)                                                                 \
+  friend marray operator op(marray &lhs, int) = delete;                        \
+  friend marray &operator op(marray &rhs) = delete;
 
-  // // OP is unary +, -
-  // friend marray operatorOP(marray &rhs) { /* ... */
-  // }
+  OP(++)
+  OP(--)
 
-  // // OP is: &, |, ^
-  // /* Available only when: DataT != float && DataT != double && DataT != half.
-  // */ friend marray operatorOP(const marray &lhs, const marray &rhs) { /* ...
-  // */
-  // }
-  // friend marray operatorOP(const marray &lhs, const DataT &rhs) { /* ... */
-  // }
+#undef OP
 
-  // // OP is: &=, |=, ^=
-  // /* Available only when: DataT != float && DataT != double && DataT != half.
-  // */ friend marray &operatorOP(marray &lhs, const marray &rhs) { /* ... */
-  // }
-  // friend marray &operatorOP(marray &lhs, const DataT &rhs) { /* ... */
-  // }
+  // OP is unary +, -
+  friend marray operator+(marray &rhs) = delete;
+  friend marray operator-(marray &rhs) = delete;
 
-  // // OP is: &&, ||
-  // friend marray<bool, NumElements> operatorOP(const marray &lhs,
-  //                                             const marray &rhs) {
-  // /* ... */ }
-  // friend marray<bool, NumElements> operatorOP(const marray &lhs,
-  //                                             const DataT &rhs) {
-  // /* ... */ }
+// OP is: &, |, ^
+#define OP(op)                                                                 \
+  friend marray operator op(const marray &lhs, const marray &rhs) = delete;    \
+  friend marray operator op(const marray &lhs, const DataT &rhs) = delete;
 
-  // // OP is: <<, >>
-  // /* Available only when: DataT != float && DataT != double && DataT != half.
-  //  */
-  // friend marray operatorOP(const marray &lhs, const marray &rhs) { /* ... */
-  // }
-  // friend marray operatorOP(const marray &lhs, const DataT &rhs) { /* ... */
-  // }
+  OP(&)
+  OP(|)
+  OP(^)
 
-  // // OP is: <<=, >>=
-  // /* Available only when: DataT != float && DataT != double && DataT != half.
-  //  */
-  // friend marray &operatorOP(marray &lhs, const marray &rhs) { /* ... */
-  // }
-  // friend marray &operatorOP(marray &lhs, const DataT &rhs) { /* ... */
-  // }
+#undef OP
+
+// OP is: &=, |=, ^=
+#define OP(op)                                                                 \
+  friend marray &operator op(marray &lhs, const marray &rhs) = delete;         \
+  friend marray &operator op(marray &lhs, const DataT &rhs) = delete;          \
+  friend marray &operator op(DataT &lhs, const marray &rhs) = delete;
+
+  OP(&=)
+  OP(|=)
+  OP(^=)
+
+#undef OP
+
+// OP is: &&, ||
+#define OP(op)                                                                 \
+  friend marray<bool, NumElements> operator op(const marray &lhs,              \
+                                               const marray &rhs) = delete;    \
+  friend marray<bool, NumElements> operator op(const marray &lhs,              \
+                                               const DataT &rhs) = delete;     \
+  friend marray<bool, NumElements> operator op(const DataT &lhs,               \
+                                               const marray &rhs) = delete;
+
+  OP(&&)
+  OP(||)
+
+#undef OP
+
+// OP is: <<, >>
+#define OP(op)                                                                 \
+  friend marray operator op(const marray &lhs, const marray &rhs) = delete;    \
+  friend marray operator op(const marray &lhs, const DataT &rhs) = delete;     \
+  friend marray operator op(const DataT &lhs, const marray &rhs) = delete;
+
+  OP(<<)
+  OP(>>)
+
+#undef OP
+
+// OP is: <<=, >>=
+#define OP(op)                                                                 \
+  friend marray &operator op(marray &lhs, const marray &rhs) = delete;         \
+  friend marray &operator op(marray &lhs, const DataT &rhs) = delete;
+
+  OP(<<=)
+  OP(>>=)
+
+#undef OP
 
   // OP is: ==, !=
 #define OP(op)                                                                 \
@@ -1740,45 +1777,25 @@ public:
 
 #undef OP
 
-  // // OP is: <, >, <=, >=
-  // friend marray<bool, NumElements> operatorOP(const marray &lhs,
-  //                                             const marray &rhs) {
-  //   /* ... */ }
-  // friend marray<bool, NumElements> operatorOP(const marray &lhs,
-  //                                             const DataT &rhs) {
-  //   /* ... */ }
+  // OP is: <, >, <=, >=
+#define OP(op)                                                                 \
+  friend marray<bool, NumElements> operator op(const marray &lhs,              \
+                                               const marray &rhs) = delete;    \
+  friend marray<bool, NumElements> operator op(const marray &lhs,              \
+                                               const DataT &rhs) = delete;     \
+  friend marray<bool, NumElements> operator op(const DataT &lhs,               \
+                                               const marray &rhs) = delete;
 
-  // /* Available only when: DataT != float && DataT != double && DataT !=
-  // half.
-  //  */
-  // friend marray operator~(const marray &v) { /* ... */
-  // }
+  OP(<);
+  OP(>);
+  OP(<=);
+  OP(>=);
 
-  // // OP is: &, |, ^
-  // /* Available only when: DataT != float && DataT != double
-  // && DataT != half. */
-  // friend marray operatorOP(const DataT &lhs, const marray &rhs) { /* ... */
-  // }
+#undef OP
 
-  // // OP is: &&, ||
-  // friend marray<bool, NumElements> operatorOP(const DataT &lhs,
-  //                                             const marray &rhs) {
-  //   /* ... */ }
+  friend marray operator~(const marray &v) = delete;
 
-  // // OP is: <<, >>
-  // /* Available only when: DataT != float && DataT != double && DataT !=
-  // half.
-  //  */
-  // friend marray operatorOP(const DataT &lhs, const marray &rhs) { /* ... */
-  // }
-
-  // // OP is: <, >, <=, >=
-  // friend marray<bool, NumElements> operatorOP(const DataT &lhs,
-  //                                             const marray &rhs) {
-  //   /* ... */ }
-
-  // friend marray<bool, NumElements> operator!(const marray &v) { /* ... */
-  // }
+  friend marray<bool, NumElements> operator!(const marray &v) = delete;
 };
 
 #define MATH_OP_ONE_PARAM(math_func, rtn_type, arg_type)                       \
