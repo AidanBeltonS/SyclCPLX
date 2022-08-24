@@ -323,11 +323,24 @@ struct is_gencomplex
                                  std::is_same_v<_Tp, complex<float>> ||
                                  std::is_same_v<_Tp, complex<sycl::half>>> {};
 
+template <typename _Tp>
+inline constexpr bool is_gencomplex_v = is_gencomplex<_Tp>::value;
+
 template <class _Tp>
 struct is_genfloat
     : std::integral_constant<bool, std::is_same_v<_Tp, double> ||
                                        std::is_same_v<_Tp, float> ||
                                        std::is_same_v<_Tp, sycl::half>> {};
+
+template <class _Tp>
+struct is_binary_op_supported
+    : std::integral_constant<
+          bool, std::is_same_v<_Tp, sycl::plus<complex<double>>> ||
+                    std::is_same_v<_Tp, sycl::plus<complex<float>>> ||
+                    std::is_same_v<_Tp, sycl::plus<complex<sycl::half>>>> {};
+
+template <typename _Tp>
+inline constexpr bool is_binary_op_supported_v = is_gencomplex<_Tp>::value;
 
 template <class _Tp>
 complex<_Tp> operator*(const complex<_Tp> &__z, const complex<_Tp> &__w);
@@ -1516,6 +1529,273 @@ template <class _Tp, class = std::enable_if<is_gencomplex<_Tp>::value>>
 SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY const sycl::stream &
 operator<<(const sycl::stream &__ss, const complex<_Tp> &_x) {
   return __ss << "(" << _x.real() << "," << _x.imag() << ")";
+}
+
+// Group algorithms
+
+// Function translates complex binary operations to its value type binary
+// operation Ex: sycl::plus<complex<float>> -> sycl::plus<float>
+template <typename BinaryOperation>
+constexpr auto get_cmplx_val_bin_op(BinaryOperation bin_op) {
+  return 0;
+}
+
+template <typename T>
+constexpr auto get_cmplx_val_bin_op(sycl::plus<complex<T>>) {
+  return sycl::plus<T>();
+}
+
+template <
+    typename Group, typename Ptr, class BinaryOperation,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<Ptr>>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY
+    typename std::remove_pointer_t<Ptr>
+    joint_reduce(Group g, Ptr first, Ptr last, BinaryOperation binary_op) {
+  using T = typename std::remove_pointer_t<Ptr>;
+  T init = {0, 0};
+  return joint_reduce(g, first, last, init, binary_op);
+}
+
+template <
+    typename Group, typename Ptr, typename T, class BinaryOperation,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<Ptr>> &&
+                              is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+joint_reduce(Group g, Ptr first, Ptr last, T init, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T partial = {0, 0};
+
+  std::ptrdiff_t offset = g.get_local_linear_id();
+  std::ptrdiff_t stride = g.get_local_linear_range();
+  for (Ptr p = first + offset; p < last; p += stride)
+    partial = binary_op(partial, *p);
+
+  return reduce_over_group(g, partial, init, binary_op);
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <typename Group, typename T, class BinaryOperation,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+reduce_over_group(Group g, T x, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T init = {0, 0};
+  return reduce_over_group(g, x, init, binary_op);
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <typename Group, typename V, typename T, class BinaryOperation,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<V> && is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+reduce_over_group(Group g, V x, T init, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T rtn;
+  rtn.real(sycl::reduce_over_group(g, x.real(), init.real(),
+                                   get_cmplx_val_bin_op(binary_op)));
+  rtn.imag(sycl::reduce_over_group(g, x.imag(), init.imag(),
+                                   get_cmplx_val_bin_op(binary_op)));
+  return rtn;
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <
+    typename Group, typename InPtr, typename OutPtr, typename T,
+    class BinaryOperation,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<InPtr>> &&
+                              is_gencomplex_v<std::remove_pointer_t<OutPtr>> &&
+                              is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY OutPtr
+joint_exclusive_scan(Group g, InPtr first, InPtr last, OutPtr result, T init,
+                     BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  std::ptrdiff_t offset = g.get_local_linear_id();
+  std::ptrdiff_t stride = g.get_local_linear_range();
+  std::ptrdiff_t N = last - first;
+
+  auto roundup = [=](const std::ptrdiff_t &v,
+                     const std::ptrdiff_t &divisor) -> std::ptrdiff_t {
+    return ((v + divisor - 1) / divisor) * divisor;
+  };
+  typename std::remove_const_t<typename std::remove_pointer_t<InPtr>> x;
+  typename std::remove_pointer_t<OutPtr> carry = init;
+
+  for (std::ptrdiff_t chunk = 0; chunk < roundup(N, stride); chunk += stride) {
+    std::ptrdiff_t i = chunk + offset;
+    if (i < N)
+      x = first[i];
+
+    typename std::remove_pointer_t<OutPtr> out =
+        exclusive_scan_over_group(g, x, carry, binary_op);
+
+    if (i < N)
+      result[i] = out;
+
+    carry = sycl::group_broadcast(g, binary_op(out, x), stride - 1);
+  }
+  return result + N;
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <
+    typename Group, typename InPtr, typename OutPtr, class BinaryOperation,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<InPtr>> &&
+                              is_gencomplex_v<std::remove_pointer_t<OutPtr>>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY OutPtr
+joint_exclusive_scan(Group g, InPtr first, InPtr last, OutPtr result,
+                     BinaryOperation binary_op) {
+  using T = typename std::remove_pointer_t<InPtr>;
+  T init = {0, 0};
+  return joint_exclusive_scan(g, first, last, result, init, binary_op);
+}
+
+template <typename Group, typename T, class BinaryOperation,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+exclusive_scan_over_group(Group g, T x, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T init = {0, 0};
+  return exclusive_scan_over_group(g, x, init, binary_op);
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <typename Group, typename V, typename T, class BinaryOperation,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<V> && is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+exclusive_scan_over_group(Group g, V x, T init, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T rtn;
+  rtn.real(sycl::exclusive_scan_over_group(g, x.real(), init.real(),
+                                           get_cmplx_val_bin_op(binary_op)));
+  rtn.imag(sycl::exclusive_scan_over_group(g, x.imag(), init.imag(),
+                                           get_cmplx_val_bin_op(binary_op)));
+  return rtn;
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <
+    typename Group, typename InPtr, typename OutPtr, class BinaryOperation,
+    typename T,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<InPtr>> &&
+                              is_gencomplex_v<std::remove_pointer_t<OutPtr>> &&
+                              is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY OutPtr
+joint_inclusive_scan(Group g, InPtr first, InPtr last, OutPtr result,
+                     BinaryOperation binary_op, T init) {
+#ifdef __SYCL_DEVICE_ONLY__
+  std::ptrdiff_t offset = g.get_local_linear_id();
+  std::ptrdiff_t stride = g.get_local_linear_range();
+  std::ptrdiff_t N = last - first;
+
+  auto roundup = [=](const std::ptrdiff_t &v,
+                     const std::ptrdiff_t &divisor) -> std::ptrdiff_t {
+    return ((v + divisor - 1) / divisor) * divisor;
+  };
+  typename std::remove_const_t<typename std::remove_pointer_t<InPtr>> x;
+  typename std::remove_pointer_t<OutPtr> carry = init;
+
+  for (std::ptrdiff_t chunk = 0; chunk < roundup(N, stride); chunk += stride) {
+    std::ptrdiff_t i = chunk + offset;
+
+    if (i < N)
+      x = first[i];
+
+    typename std::remove_pointer_t<OutPtr> out =
+        inclusive_scan_over_group(g, x, binary_op, carry);
+
+    if (i < N)
+      result[i] = out;
+
+    carry = sycl::group_broadcast(g, out, stride - 1);
+  }
+  return result + N;
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <
+    typename Group, typename InPtr, typename OutPtr, class BinaryOperation,
+    typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                              is_binary_op_supported_v<BinaryOperation> &&
+                              is_gencomplex_v<std::remove_pointer_t<InPtr>> &&
+                              is_gencomplex_v<std::remove_pointer_t<OutPtr>>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY OutPtr
+joint_inclusive_scan(Group g, InPtr first, InPtr last, OutPtr result,
+                     BinaryOperation binary_op) {
+  using T = typename std::remove_pointer_t<InPtr>;
+  T init = {0, 0};
+  return joint_inclusive_scan(g, first, last, result, binary_op, init);
+}
+
+template <typename Group, typename T, class BinaryOperation,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+inclusive_scan_over_group(Group g, T x, BinaryOperation binary_op) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T init = {0, 0};
+  return inclusive_scan_over_group(g, x, binary_op, init);
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
+}
+
+template <typename Group, typename V, class BinaryOperation, typename T,
+          typename = std::enable_if<sycl::is_group_v<std::decay_t<Group>> &&
+                                    is_binary_op_supported_v<BinaryOperation> &&
+                                    is_gencomplex_v<V> && is_gencomplex_v<T>>>
+SYCL_EXTERNAL _SYCL_EXT_CPLX_INLINE_VISIBILITY T
+inclusive_scan_over_group(Group g, V x, BinaryOperation binary_op, T init) {
+#ifdef __SYCL_DEVICE_ONLY__
+  T rtn;
+  rtn.real(sycl::inclusive_scan_over_group(
+      g, x.real(), get_cmplx_val_bin_op(binary_op), init.real()));
+  rtn.imag(sycl::inclusive_scan_over_group(
+      g, x.imag(), get_cmplx_val_bin_op(binary_op), init.imag()));
+  return rtn;
+#else
+  throw sycl::exception(sycl::make_error_code(sycl::errc::runtime),
+                        "Group algorithms are not support on host");
+#endif
 }
 
 _SYCL_EXT_CPLX_END_NAMESPACE_STD
