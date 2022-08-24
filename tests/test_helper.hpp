@@ -13,6 +13,43 @@ template <> const char *get_typename<double>() { return "double"; }
 template <> const char *get_typename<float>() { return "float"; }
 template <> const char *get_typename<sycl::half>() { return "sycl::half"; }
 
+// Helper class to handle implicit conversion for passing array of gencomplex
+// values
+
+template <typename T = double> struct cmplx {
+  cmplx() : re(0), im(0) {}
+  cmplx(T real, T imag) : re(real), im(imag) {}
+
+  template <typename X> cmplx(cmplx<X> c) {
+    re = c.re;
+    im = c.im;
+  }
+
+  T re;
+  T im;
+};
+
+template <typename T> class test_vector {
+  std::vector<T> Data;
+
+public:
+  template <typename... ArgTN>
+  constexpr test_vector(const ArgTN &... args) : Data{args...} {};
+
+  T operator[](std::size_t index) const { return Data[index]; }
+
+  template <typename X> test_vector(test_vector<X> &input) {
+    Data.resize(input.size());
+    for (std::size_t i = 0; i < input.size(); ++i)
+      Data[i] = input[i];
+  }
+
+  size_t size() { return Data.size(); }
+
+  std::vector<T> &get() { return Data; }
+  const std::vector<T> &get() const { return Data; }
+};
+
 // Helper for testing each decimal type
 
 template <template <typename> typename action, typename... argsT>
