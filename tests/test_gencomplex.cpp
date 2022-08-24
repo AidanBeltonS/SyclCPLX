@@ -15,6 +15,17 @@ void check_is_gencomplex() {
   static_assert(is_gencomplex<complex<unsigned long long>>::value == false);
   static_assert(is_gencomplex<complex<unsigned long>>::value == false);
   static_assert(is_gencomplex<complex<unsigned int>>::value == false);
+
+  static_assert(is_gencomplex_v<complex<double>> == true);
+  static_assert(is_gencomplex_v<complex<float>> == true);
+  static_assert(is_gencomplex_v<complex<sycl::half>> == true);
+
+  static_assert(is_gencomplex_v<complex<long long>> == false);
+  static_assert(is_gencomplex_v<complex<long>> == false);
+  static_assert(is_gencomplex_v<complex<int>> == false);
+  static_assert(is_gencomplex_v<complex<unsigned long long>> == false);
+  static_assert(is_gencomplex_v<complex<unsigned long>> == false);
+  static_assert(is_gencomplex_v<complex<unsigned int>> == false);
 }
 
 int main() {
